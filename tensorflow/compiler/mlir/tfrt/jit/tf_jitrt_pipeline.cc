@@ -98,6 +98,20 @@ void AddLinalgTransformations(OpPassManager& pm,
   pm.addNestedPass<FuncOp>(CreateVectorizeTiledOpsPass());
 }
 
+void AddBufferizationPasses(OpPassManager& pm) {
+  // Now bufferize all the compute operations (hlo + linalg) and func signature.
+  pm.addPass(
+      mlir::kernel_gen::transforms::CreateComputeOpAndFuncBufferizePass());
+  pm.addNestedPass<FuncOp>(
+      mlir::kernel_gen::transforms::CreateTiledLoopBufferizePass());
+  // Always run CSE and canonicalizer (which does dead code removal) before
+  // bufferizing anything.
+  pm.addPass(mlir::createCSEPass());
+  pm.addPass(mlir::createCanonicalizerPass());
+  pm.addPass(
+      mlir::kernel_gen::transforms::CreateFinalBufferizePass(/*alignment=*/64));
+}
+
 }  // namespace
 
 // -------------------------------------------------------------------------- //
@@ -182,25 +196,16 @@ void CreateTfJitRtPipeline(OpPassManager& pm,
   // Inline everything, bufferization doesn't model ownership across calls.
   pm.addPass(mlir::createInlinerPass());
 
-  // Bufferize Linalg on tensors program.
   // Always run canonicalizer (which does dead code removal) before bufferizing
   // anything.
   pm.addPass(mlir::createCanonicalizerPass());
-  // Now bufferize all the compute operations (hlo + linalg) and func signature.
-  pm.addPass(
-      mlir::kernel_gen::transforms::CreateComputeOpAndFuncBufferizePass());
-  pm.addNestedPass<FuncOp>(
-      mlir::kernel_gen::transforms::CreateTiledLoopBufferizePass());
+
+  AddBufferizationPasses(pm);
+
   // Now that all compute operations are converted to standard (as a side effect
   // of bufferizing to memref dialect) we can remove the remaining references
   // to unsigned types.
   pm.addPass(mlir::kernel_gen::transforms::CreateConvertToSignlessPass());
-  // Always run CSE and canonicalizer (which does dead code removal) before
-  // bufferizing anything.
-  pm.addPass(mlir::createCSEPass());
-  pm.addPass(mlir::createCanonicalizerPass());
-  pm.addPass(
-      mlir::kernel_gen::transforms::CreateFinalBufferizePass(/*alignment=*/64));
   pm.addPass(mlir::createCSEPass());
   pm.addPass(mlir::createCanonicalizerPass());
 
