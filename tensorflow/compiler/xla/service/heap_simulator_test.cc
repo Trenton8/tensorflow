@@ -15,6 +15,7 @@ limitations under the License.
 
 #include "tensorflow/compiler/xla/service/heap_simulator.h"
 
+#include <algorithm>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -1033,8 +1034,9 @@ class GlobalDecreasingSizeBestFitHeapTest : public HeapAlgorithmTestBase {
       buffer_interval_.end = end;
       chunk_candidate_ = GlobalDecreasingSizeBestFitHeap::FindChunkCandidate(
           buffer_interval_, preferred_offset);
-      EXPECT_EQ(chunk_candidate_.chunk.size, size);
-      return {chunk_candidate_.chunk.offset, chunk_candidate_.heap_size};
+      EXPECT_EQ(chunk_candidate_.size, size);
+      return {chunk_candidate_.offset,
+              std::max(result_.heap_size, chunk_candidate_.chunk_end())};
     }
 
     // Commits the previously found chunk candidate.
@@ -1045,7 +1047,7 @@ class GlobalDecreasingSizeBestFitHeapTest : public HeapAlgorithmTestBase {
 
    private:
     BufferInterval buffer_interval_;
-    ChunkCandidate chunk_candidate_;
+    Chunk chunk_candidate_;
   };
 
   InheritedGlobalDecreasingSizeBestFitHeap heap_;

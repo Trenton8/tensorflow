@@ -404,13 +404,6 @@ class GlobalDecreasingSizeBestFitHeap : public HeapAlgorithm<BufferType> {
   static BufferIntervalCompare GetSpatialBufferIntervalCompare();
 
  protected:
-  // The candidate contains a chunk and the resultant heap size if this
-  // chunk is to be committed.
-  struct ChunkCandidate {
-    Chunk chunk;
-    int64_t heap_size;
-  };
-
   // Returns the buffer intervals sorted according to buffer_interval_compare_.
   std::vector<BufferInterval> GetSortedBufferIntervals() const;
 
@@ -418,14 +411,12 @@ class GlobalDecreasingSizeBestFitHeap : public HeapAlgorithm<BufferType> {
   // from this class. The Finish() method tries to find a candidate chunk for
   // each BufferInterval, after calling GetSortedBufferIntervals. If a
   // non-negative preferred_offset is provided, FindChunkCandidate attempts
-  // finding a chunk at this offset. The ChunkCandidate returns the chunk and
-  // the final heap size if it chunk is to be committed. The Finish() method can
-  // then call CommitChunk to associate the chunk with the BufferInterval, if
-  // the final heap size is within the limits.
-  ChunkCandidate FindChunkCandidate(const BufferInterval& buffer_interval,
-                                    int64_t preferred_offset = -1) const;
-  void CommitChunk(const BufferInterval& buffer_interval,
-                   ChunkCandidate chunk_candidate);
+  // finding a chunk at this offset. The Finish() method can then call
+  // CommitChunk to associate the chunk with the BufferInterval, if the final
+  // heap size is within the limits.
+  Chunk FindChunkCandidate(const BufferInterval& buffer_interval,
+                           int64_t preferred_offset = -1) const;
+  void CommitChunk(const BufferInterval& buffer_interval, Chunk chunk);
 
   // Adds the buffer and the chunk to the result chunk map.
   virtual void AddToChunkMap(const BufferType* buffer, Chunk chunk);
